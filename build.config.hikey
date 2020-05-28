@@ -1,0 +1,20 @@
+HIKEY_KERNEL_DIR=hikey-linaro
+
+. ${ROOT_DIR}/${HIKEY_KERNEL_DIR}/build.config.common
+. ${ROOT_DIR}/${HIKEY_KERNEL_DIR}/build.config.aarch64
+
+KERNEL_DIR=${HIKEY_KERNEL_DIR}
+BRANCH=android-hikey-linaro-4.19
+DEFCONFIG=hikey_defconfig
+
+FILES="
+arch/arm64/boot/Image.gz-dtb
+arch/arm64/boot/dts/hisilicon/hi6220-hikey.dtb
+vmlinux
+System.map
+"
+
+KERNEL_BINARY=Image.gz-dtb
+KERNEL_CMDLINE="console=ttyAMA3,115200 androidboot.console=ttyAMA3 printk.devkmsg=on buildvariant=userdebug androidboot.hardware=hikey firmware_class.path=/vendor/firmware efi=noruntime overlay_mgr.overlay_dt_entry=hardware_cfg_enable_android_fstab"
+BOOT_IMAGE_HEADER_VERSION=0
+VENDOR_RAMDISK_BINARY=ramdisk.img

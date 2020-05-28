@@ -280,8 +280,10 @@ static int rt1711h_probe(struct i2c_client *client,
 	chip->data.set_vconn = rt1711h_set_vconn;
 	chip->data.start_drp_toggling = rt1711h_start_drp_toggling;
 	chip->tcpci = tcpci_register_port(chip->dev, &chip->data);
-	if (IS_ERR_OR_NULL(chip->tcpci))
+	if (IS_ERR_OR_NULL(chip->tcpci)) {
+		device_connection_remove(&chip->dev_conn);
 		return PTR_ERR(chip->tcpci);
+	}
 
 	return 0;
 }

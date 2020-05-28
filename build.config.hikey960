@@ -1,13 +1,20 @@
-ARCH=arm64
-BRANCH=mirror-aosp-android-hikey-linaro-4.19
-CROSS_COMPILE=aarch64-linux-android-
+HIKEY_KERNEL_DIR=hikey-linaro
+
+. ${ROOT_DIR}/${HIKEY_KERNEL_DIR}/build.config.common
+. ${ROOT_DIR}/${HIKEY_KERNEL_DIR}/build.config.aarch64
+
+KERNEL_DIR=${HIKEY_KERNEL_DIR}
+BRANCH=android-hikey-linaro-4.19
 DEFCONFIG=hikey960_defconfig
-EXTRA_CMDS=''
-KERNEL_DIR=hikey-linaro
-LINUX_GCC_CROSS_COMPILE_PREBUILTS_BIN=prebuilts/gcc/linux-x86/aarch64/aarch64-linux-android-4.9/bin
+
 FILES="
 arch/arm64/boot/Image.gz-dtb
 arch/arm64/boot/dts/hisilicon/hi3660-hikey960.dtb
 vmlinux
 System.map
 "
+
+KERNEL_BINARY=Image.gz-dtb
+KERNEL_CMDLINE="console=ttyAMA6 printk.devkmsg=on buildvariant=userdebug loglevel=15 androidboot.hardware=hikey960 androidboot.verifiedbootstate=orange no_console_suspend firmware_class.path=/vendor/firmware efi=noruntime init=/init androidboot.boot_devices=soc/ff3b0000.ufs"
+BOOT_IMAGE_HEADER_VERSION=0
+VENDOR_RAMDISK_BINARY=ramdisk.img
