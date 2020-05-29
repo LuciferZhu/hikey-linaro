@@ -61,7 +61,6 @@
 			reg = <0x0 0x0>;
 			enable-method = "psci";
 			next-level-cache = <&A53_L2>;
-			cpu-idle-states = <&CPU_SLEEP_0 &CLUSTER_SLEEP_0>;
 			capacity-dmips-mhz = <592>;
 			clocks = <&stub_clock HI3660_CLK_STUB_CLUSTER0>;
 			operating-points-v2 = <&cluster0_opp>;
@@ -440,8 +439,8 @@
 				reg = <0x39>;
 				v1p2-supply = <&ldo3>;
 				vdd-supply = <&ldo3>;
-				interrupt-parent = <&gpio1>;
-				interrupts = <1 2>;
+				interrupt-parent = <&gpio22>;
+				interrupts = <4 2>;
 				pd-gpio = <&gpio5 1 0>;
 				sel-gpio = <&gpio2 4 0>;
 				adi,dsi-lanes = <4>;

@@ -196,6 +196,7 @@ static int fl_classify(struct sk_buff *skb, const struct tcf_proto *tp,
 	struct fl_flow_key skb_mkey;
 
 	list_for_each_entry_rcu(mask, &head->masks, list) {
+		flow_dissector_init_keys(&skb_key.control, &skb_key.basic);
 		fl_clear_masked_range(&skb_key, mask);
 
 		skb_key.indev_ifindex = skb->skb_iif;
@@ -486,6 +487,7 @@ static const struct nla_policy fl_policy[TCA_FLOWER_MAX + 1] = {
 	[TCA_FLOWER_KEY_ENC_IP_TTL_MASK] = { .type = NLA_U8 },
 	[TCA_FLOWER_KEY_ENC_OPTS]	= { .type = NLA_NESTED },
 	[TCA_FLOWER_KEY_ENC_OPTS_MASK]	= { .type = NLA_NESTED },
+	[TCA_FLOWER_FLAGS]		= { .type = NLA_U32 },
 };
 
 static const struct nla_policy
@@ -1213,6 +1215,24 @@ static int fl_change(struct net *net, struct sk_buff *in_skb,
 	if (err < 0)
 		goto errout;
 
+	if (tb[TCA_FLOWER_FLAGS]) {
+		fnew->flags = nla_get_u32(tb[TCA_FLOWER_FLAGS]);
+
+		if (!tc_flags_valid(fnew->flags)) {
+			err = -EINVAL;
+			goto errout;
+		}
+	}
+
+	err = fl_set_parms(net, tp, fnew, mask, base, tb, tca[TCA_RATE], ovr,
+			   tp->chain->tmplt_priv, extack);
+	if (err)
+		goto errout;
+
+	err = fl_check_assign_mask(head, fnew, fold, mask);
+	if (err)
+		goto errout;
+
 	if (!handle) {
 		handle = 1;
 		err = idr_alloc_u32(&head->handle_idr, fnew, &handle,
@@ -1223,37 +1243,19 @@ static int fl_change(struct net *net, struct sk_buff *in_skb,
 				    handle, GFP_KERNEL);
 	}
 	if (err)
-		goto errout;
+		goto errout_mask;
 	fnew->handle = handle;
-
-	if (tb[TCA_FLOWER_FLAGS]) {
-		fnew->flags = nla_get_u32(tb[TCA_FLOWER_FLAGS]);
-
-		if (!tc_flags_valid(fnew->flags)) {
-			err = -EINVAL;
-			goto errout_idr;
-		}
-	}
-
-	err = fl_set_parms(net, tp, fnew, mask, base, tb, tca[TCA_RATE], ovr,
-			   tp->chain->tmplt_priv, extack);
-	if (err)
-		goto errout_idr;
-
-	err = fl_check_assign_mask(head, fnew, fold, mask);
-	if (err)
-		goto errout_idr;
 
 	if (!tc_skip_sw(fnew->flags)) {
 		if (!fold && fl_lookup(fnew->mask, &fnew->mkey)) {
 			err = -EEXIST;
-			goto errout_mask;
+			goto errout_idr;
 		}
 
 		err = rhashtable_insert_fast(&fnew->mask->ht, &fnew->ht_node,
 					     fnew->mask->filter_ht_params);
 		if (err)
-			goto errout_mask;
+			goto errout_idr;
 	}
 
 	if (!tc_skip_hw(fnew->flags)) {
@@ -1290,12 +1292,13 @@ static int fl_change(struct net *net, struct sk_buff *in_skb,
 	kfree(mask);
 	return 0;
 
-errout_mask:
-	fl_mask_put(head, fnew->mask, false);
-
 errout_idr:
 	if (!fold)
 		idr_remove(&head->handle_idr, fnew->handle);
+
+errout_mask:
+	fl_mask_put(head, fnew->mask, false);
+
 errout:
 	tcf_exts_destroy(&fnew->exts);
 	kfree(fnew);
@@ -1941,12 +1944,17 @@ nla_put_failure:
 	return -EMSGSIZE;
 }
 
-static void fl_bind_class(void *fh, u32 classid, unsigned long cl)
+static void fl_bind_class(void *fh, u32 classid, unsigned long cl, void *q,
+			  unsigned long base)
 {
 	struct cls_fl_filter *f = fh;
 
-	if (f && f->res.classid == classid)
-		f->res.class = cl;
+	if (f && f->res.classid == classid) {
+		if (cl)
+			__tcf_bind_filter(q, &f->res, base);
+		else
+			__tcf_unbind_filter(q, &f->res);
+	}
 }
 
 static struct tcf_proto_ops cls_fl_ops __read_mostly = {

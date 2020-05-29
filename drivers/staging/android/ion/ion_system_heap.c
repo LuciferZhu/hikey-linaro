@@ -247,10 +247,10 @@ static void ion_system_heap_destroy_pools(struct ion_page_pool **pools)
 static int ion_system_heap_create_pools(struct ion_page_pool **pools)
 {
 	int i;
-	gfp_t gfp_flags = low_order_gfp_flags;
 
 	for (i = 0; i < NUM_ORDERS; i++) {
 		struct ion_page_pool *pool;
+		gfp_t gfp_flags = low_order_gfp_flags;
 
 		if (orders[i] > 4)
 			gfp_flags = high_order_gfp_flags;
@@ -289,7 +289,7 @@ free_heap:
 	return ERR_PTR(-ENOMEM);
 }
 
-static int ion_system_heap_create(void)
+int ion_system_heap_create(void)
 {
 	struct ion_heap *heap;
 
@@ -301,7 +301,6 @@ static int ion_system_heap_create(void)
 	ion_device_add_heap(heap);
 	return 0;
 }
-device_initcall(ion_system_heap_create);
 
 static int ion_system_contig_heap_allocate(struct ion_heap *heap,
 					   struct ion_buffer *buffer,
@@ -383,7 +382,7 @@ static struct ion_heap *__ion_system_contig_heap_create(void)
 	return heap;
 }
 
-static int ion_system_contig_heap_create(void)
+int ion_system_contig_heap_create(void)
 {
 	struct ion_heap *heap;
 
@@ -394,5 +393,8 @@ static int ion_system_contig_heap_create(void)
 	ion_device_add_heap(heap);
 	return 0;
 }
-device_initcall(ion_system_contig_heap_create);
 
+#ifndef CONFIG_ION_MODULE
+device_initcall(ion_system_contig_heap_create);
+device_initcall(ion_system_heap_create);
+#endif
